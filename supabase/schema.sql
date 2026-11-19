@@ -291,6 +291,9 @@ end $$;
 
 revoke execute on all functions in schema public from public, anon, authenticated;
 
+-- Nodig als "Grant API access to new tables automatically" uit staat.
+grant usage on schema public to anon, authenticated;
+
 grant execute on function
   public.dr_inloggen(text),
   public.dr_overzicht(text),

@@ -27,6 +27,10 @@ Supabase verandert soms de knoppen een beetje. Zie je iets anders dan hier staat
    - **Database Password:** klik op **Generate a password**. Je hoeft dit wachtwoord niet te onthouden of op te schrijven.
    - **Region:** kies **Central EU (Frankfurt)**. Staat die er niet bij, kies dan een andere met "EU" erin.
      *(Dit kun je later niet meer veranderen.)*
+   - **Data access / Security**-schuifjes (als je die ziet):
+     - **Enable Data API:** ✅ aan
+     - **Grant API access to new tables automatically:** ⬜ uit
+     - **Enable RLS on new tables automatically:** ✅ aan
 7. Klik op **Create new project**.
 8. Wacht 1 à 2 minuten tot het project klaar is. Je ziet dan een overzichtspagina.
 
