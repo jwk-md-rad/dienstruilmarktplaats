@@ -18,6 +18,8 @@ Techniek: een statische website (`docs/`) op GitHub Pages en een gratis Supabase
 
 ### 1. Database aanmaken bij Supabase (gratis)
 
+> 👉 Uitgebreide versie met elke klik uitgelegd: **[HANDLEIDING-DATABASE.md](HANDLEIDING-DATABASE.md)**
+
 1. Ga naar [supabase.com](https://supabase.com) en maak een account (inloggen met GitHub kan).
 2. Klik **New project**:
    - Naam: `dienstruil`
