@@ -28,6 +28,8 @@
     verlopen: false,
     calMonth: startOfMonth(new Date()),
     calSelected: null,
+    // Directe link naar één aanbod: ...#aanbod=<id>
+    startAanbod: (location.hash.match(/aanbod=([0-9a-f-]{36})/i) || [])[1] || null,
   };
 
   // ------------------------------------------------------------------
@@ -141,11 +143,54 @@
   }
   function metGroep(p) { return Object.assign({ p_groep: state.groep }, p); }
 
+  // ------------------------------------------------------------------
+  // WhatsApp: deelbericht met directe link (je verstuurt het zelf)
+  // ------------------------------------------------------------------
+  function zetHash(id) { try { history.replaceState(null, "", "#aanbod=" + id); } catch (e) { /* negeren */ } }
+  function wisHash() { try { history.replaceState(null, "", location.pathname + location.search); } catch (e) { /* negeren */ } }
+  function aanbodLink(id) { return location.origin + location.pathname + "#aanbod=" + id; }
+  function deelTekst(a) {
+    const info = dagInfo(a.datum);
+    const regels = [
+      "🔄 *Dienst te ruil*",
+      "*" + longDate(a.datum) + "*",
+      (DEEL[a.deel] || a.deel) + " · " + (a.locatie === "VU" ? "VUmc" : "AMC") + (info.feest ? " · " + info.feest : ""),
+      "Aangeboden door " + a.naam,
+    ];
+    if (a.notitie) regels.push("💬 " + a.notitie);
+    regels.push("", "Overnemen of ruilen? Reageer via Dienstruil 👇", aanbodLink(a.id));
+    return regels.join("\n");
+  }
+  function waUrl(a) { return "https://wa.me/?text=" + encodeURIComponent(deelTekst(a)); }
+  const WA_ICOON = `<svg class="wa-ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11.5a8.5 8.5 0 0 1-12.4 7.6L3.5 20.5l1.4-4A8.5 8.5 0 1 1 20 11.5z"/><path d="M9 8.6c.3 2.9 2.4 5.4 5.6 6.3l1-1.3-1.9-1-.8.8c-1-.5-1.8-1.3-2.3-2.3l.8-.8-1-1.9z"/></svg>`;
+
+  function deelModal(a) {
+    const m = openModal(sheetHead("Aanbod geplaatst ✓") + `
+      <p style="margin:0 0 14px">Je aanbod staat online. Laat het de groep weten, dan zien je collega's het meteen.</p>
+      <div class="wa-preview">${esc(deelTekst(a)).replace(/\*([^*\n]+)\*/g, "<b>$1</b>")}</div>
+      <a class="btn btn-wa btn-block" href="${esc(waUrl(a))}" target="_blank" rel="noopener" data-deel>${WA_ICOON} Deel in WhatsApp-groep</a>
+      <div class="actions" style="margin-top:8px">
+        <button type="button" class="btn btn-ghost" data-kopieer>Tekst kopiëren</button>
+        <button type="button" class="btn btn-ghost" data-close>Niet nu</button>
+      </div>`);
+    m.el.querySelector("[data-deel]").addEventListener("click", () => setTimeout(m.close, 300));
+    m.el.querySelector("[data-kopieer]").addEventListener("click", async () => {
+      try { await navigator.clipboard.writeText(deelTekst(a)); toast("Tekst gekopieerd"); }
+      catch (e) { toast("Kopiëren lukt niet op dit apparaat"); }
+    });
+  }
+
   async function laden(stil) {
     try {
       state.aanbod = (await rpc("dr_overzicht", metGroep({}))) || [];
       state.geladen = true;
       renderBoard();
+      if (state.startAanbod) {
+        const id = state.startAanbod;
+        state.startAanbod = null;
+        if (state.aanbod.some((a) => a.id === id)) openDetail(id);
+        else { wisHash(); toast("Dit aanbod bestaat niet meer."); }
+      }
     } catch (e) {
       if (e.groep) return uitloggen("Het groepswachtwoord klopt niet (meer). Log opnieuw in.");
       if (!stil) toast(e.message);
@@ -570,15 +615,16 @@
       if (f) { err.innerHTML = `<div class="error">${esc(f)}</div>`; return; }
       knopBezig(btn, true, "Plaatsen…");
       try {
-        await rpc("dr_aanbod_plaatsen", metGroep({
+        const nieuwId = await rpc("dr_aanbod_plaatsen", metGroep({
           p_datum: w.datum, p_deel: w.deel, p_locatie: w.locatie,
           p_naam: naam, p_pin: pin, p_notitie: form.notitie.value.trim() || null,
         }));
         state.naam = naam; store.set("dr_naam", naam);
         m.close();
-        toast("Aanbod geplaatst");
         state.status = "alle";
-        await laden();
+        await laden(true);
+        const nieuw = state.aanbod.find((a) => a.id === nieuwId);
+        if (nieuw) deelModal(nieuw); else toast("Aanbod geplaatst");
       } catch (ex) {
         knopBezig(btn, false);
         if (ex.groep) return uitloggen(ex.message);
@@ -591,7 +637,8 @@
   // Detail van een aanbod
   // ------------------------------------------------------------------
   function openDetail(id) {
-    const m = openModal(`<div data-inhoud></div>`);
+    zetHash(id);
+    const m = openModal(`<div data-inhoud></div>`, { onClose: wisHash });
     const root = m.el.querySelector("[data-inhoud]");
     const form = { soort: null, kiezer: null };
 
@@ -679,6 +726,7 @@
       root.innerHTML = sheetHead(esc(longDate(a.datum))) + `
         <div class="detail-tags">${dienstTags(a.datum, a.deel, a.locatie)}<span class="pill s-${a.status}">${STATUS[a.status]}</span></div>
         <div class="who">Aangeboden door <strong>${esc(a.naam)}</strong> · ${esc(fmtStamp.format(new Date(a.aangemaakt)))}</div>
+        ${a.status === "open" && !verlopen ? `<a class="btn btn-wa btn-sm" style="margin-top:10px" href="${esc(waUrl(a))}" target="_blank" rel="noopener">${WA_ICOON} Deel in WhatsApp</a>` : ""}
         ${a.notitie ? `<div class="detail-note">${esc(a.notitie)}</div>` : ""}
         ${verlopen && a.status !== "afgehandeld" ? `<div class="banner s-afgesproken">Deze datum is voorbij.</div>` : ""}
         ${banner}
@@ -792,6 +840,13 @@
       if (state.groep && state.geladen && document.visibilityState === "visible" && !modalRoot.children.length) laden(true);
     };
     setInterval(stilVerversen, 60000);
+    window.addEventListener("hashchange", () => {
+      const id = (location.hash.match(/aanbod=([0-9a-f-]{36})/i) || [])[1];
+      if (!id || !state.groep) return;
+      if (!state.geladen) { state.startAanbod = id; return; }
+      if (modalRoot.children.length) return;
+      if (state.aanbod.some((a) => a.id === id)) openDetail(id);
+    });
     document.addEventListener("visibilitychange", stilVerversen);
     if (!state.groep) return renderLogin();
     laden();

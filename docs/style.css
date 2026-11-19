@@ -323,3 +323,18 @@ textarea.input { min-height: 70px; resize: vertical; }
   .brand .sub { display: none; }
   .topbar .btn { padding: 8px 12px; }
 }
+
+/* ---------- WhatsApp delen ---------- */
+a.btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; text-decoration: none; }
+.btn-wa { background: #25d366; color: #052e16; }
+.btn-wa:hover { filter: brightness(1.05); }
+.wa-ic { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linejoin: round; flex: none; }
+.btn-sm .wa-ic { width: 17px; height: 17px; }
+.wa-preview {
+  white-space: pre-wrap; overflow-wrap: anywhere; font-size: .88rem; line-height: 1.45;
+  background: #e7f8ee; border-radius: 12px 12px 12px 4px; padding: 10px 12px; margin-bottom: 14px;
+  color: #10301f; border: 1px solid #c9ecd6;
+}
+@media (prefers-color-scheme: dark) {
+  .wa-preview { background: #12301f; color: #d6f5e2; border-color: #1f4a31; }
+}
