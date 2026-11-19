@@ -5,19 +5,22 @@
   --text: #17222a;
   --muted: #5c6b75;
   --border: #dbe2e6;
-  --primary: #0f4c5c;
+  --primary: #003741;
   --primary-ink: #ffffff;
-  --primary-soft: #e1eef1;
+  --primary-soft: #e0ecee;
+  --brand-orange: #f07814;
+  --brand-red: #e6000f;
+  --brand-petrol: #003741;
   --open: #1f8a4c;
   --open-soft: #e3f4ea;
   --afgesproken: #b26a00;
   --afgesproken-soft: #fdf0d9;
   --afgehandeld: #6b7780;
   --afgehandeld-soft: #e9edef;
-  --danger: #b42318;
-  --danger-soft: #fdecea;
-  --amc: #0f4c5c;
-  --vu: #5b3c99;
+  --danger: #c4000d;
+  --danger-soft: #fde8e9;
+  --amc: #003741;
+  --vu: #b34f00;
   --weekend: #f6f0e4;
   --radius: 14px;
   --shadow: 0 1px 2px rgba(16, 34, 42, .06), 0 4px 14px rgba(16, 34, 42, .05);
@@ -32,9 +35,9 @@
     --text: #e6edf0;
     --muted: #93a3ab;
     --border: #2a383e;
-    --primary: #5fb3c6;
-    --primary-ink: #0b1a1f;
-    --primary-soft: #183239;
+    --primary: #6cc0cc;
+    --primary-ink: #001d22;
+    --primary-soft: #133a41;
     --open: #4cc37f;
     --open-soft: #163325;
     --afgesproken: #f0a83a;
@@ -43,8 +46,8 @@
     --afgehandeld-soft: #222c31;
     --danger: #f2877d;
     --danger-soft: #3b1d1a;
-    --amc: #5fb3c6;
-    --vu: #b39ae8;
+    --amc: #6cc0cc;
+    --vu: #f59a4c;
     --weekend: #241f17;
     --shadow: 0 1px 2px rgba(0, 0, 0, .3);
     color-scheme: dark;
@@ -66,12 +69,16 @@ button, input, textarea, select { font: inherit; color: inherit; }
 /* ---------- Topbar ---------- */
 .topbar {
   position: sticky; top: 0; z-index: 20;
-  background: var(--primary);
-  color: var(--primary-ink);
+  background: var(--brand-petrol);
+  color: #ffffff;
   padding-top: env(safe-area-inset-top);
 }
+.topbar::after {
+  content: ""; display: block; height: 3px;
+  background: linear-gradient(90deg, var(--brand-orange) 0 70%, var(--brand-red) 70% 100%);
+}
 @media (prefers-color-scheme: dark) {
-  .topbar { background: #12333c; color: #e6edf0; }
+  .topbar { background: #002a31; }
 }
 .topbar-inner {
   max-width: 760px; margin: 0 auto;
@@ -81,13 +88,13 @@ button, input, textarea, select { font: inherit; color: inherit; }
 .brand { display: flex; align-items: center; gap: 10px; min-width: 0; }
 .logo {
   width: 36px; height: 36px; flex: none; border-radius: 10px;
-  background: rgba(255,255,255,.14); display: grid; place-items: center;
+  background: var(--brand-orange); color: #ffffff; display: grid; place-items: center;
 }
 .logo svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
 .brand h1 { font-size: 1.15rem; margin: 0; line-height: 1.1; letter-spacing: -.01em; }
 .brand .sub { margin: 2px 0 0; font-size: .8rem; opacity: .8; white-space: nowrap; }
-.topbar .btn-primary { background: #fff; color: #0f4c5c; }
-@media (prefers-color-scheme: dark) { .topbar .btn-primary { background: #5fb3c6; color: #0b1a1f; } }
+.topbar .btn-primary { background: var(--brand-orange); color: #001d22; }
+.topbar .btn-primary:hover { filter: brightness(1.06); }
 
 .container { max-width: 760px; margin: 0 auto; padding: 16px; }
 .loading { color: var(--muted); text-align: center; padding: 40px 0; }
