@@ -107,7 +107,7 @@
   const STATUS_UITLEG = {
     open: "Zoekt nog iemand om te ruilen of over te nemen.",
     afgesproken: `De 2 radiologen zijn het eens over de ruil en mailen ${ROOSTER} van het rooster.`,
-    afgehandeld: `${ROOSTER} heeft akkoord gegeven: de ruil kan rooster-technisch.`,
+    afgehandeld: `${ROOSTER} heeft akkoord gegeven en de ruil verwerkt in het rooster.`,
   };
 
   function dienstTags(datum, deel, locatie) {
@@ -671,10 +671,10 @@
       if (a.status === "afgesproken" && geacc) {
         banner = `<div class="banner s-afgesproken"><strong>Afgesproken met ${esc(geacc.naam)}</strong>
           ${geacc.soort === "ruilen" ? `Ruil tegen ${esc(dienstTekst(geacc.ruil_datum, geacc.ruil_deel, geacc.ruil_locatie))}.` : "Neemt de dienst over (zonder terugdienst)."}
-          <br><br><strong>Volgende stap:</strong> mail samen ${ROOSTER} van het rooster. Zodra ${ROOSTER} akkoord geeft, zet ${esc(a.naam)} de dienst op <em>Afgehandeld</em>.</div>`;
+          <br><br><strong>Volgende stap:</strong> mail samen ${ROOSTER} van het rooster. Zodra ${ROOSTER} akkoord geeft en de ruil heeft verwerkt in het rooster, zet ${esc(a.naam)} de dienst op <em>Afgehandeld</em>.</div>`;
       } else if (a.status === "afgehandeld") {
         banner = `<div class="banner s-afgehandeld"><strong>✓ Afgehandeld${a.afgehandeld_op ? " op " + esc(fmtStamp.format(new Date(a.afgehandeld_op))) : ""}</strong>
-          ${geacc ? `${geacc.soort === "ruilen" ? `Geruild met ${esc(geacc.naam)} tegen ${esc(dienstTekst(geacc.ruil_datum, geacc.ruil_deel, geacc.ruil_locatie))}` : `Overgenomen door ${esc(geacc.naam)}`}. ` : ""}${ROOSTER} heeft akkoord gegeven: de ruil kan rooster-technisch.</div>`;
+          ${geacc ? `${geacc.soort === "ruilen" ? `Geruild met ${esc(geacc.naam)} tegen ${esc(dienstTekst(geacc.ruil_datum, geacc.ruil_deel, geacc.ruil_locatie))}` : `Overgenomen door ${esc(geacc.naam)}`}. ` : ""}${ROOSTER} heeft akkoord gegeven en de ruil verwerkt in het rooster.</div>`;
       }
 
       const voorstelHtml = voorstellen.map((r) => `
@@ -724,7 +724,7 @@
         <div class="section">
           <h3>Alleen voor ${esc(a.naam)}</h3>
           <div class="owner-box">
-            <div class="hint">${a.status === "open" ? "Accepteer of weiger voorstellen hierboven. " : ""}${a.status === "afgesproken" ? `Heeft ${ROOSTER} akkoord gegeven? Markeer de dienst dan als afgehandeld. ` : ""}Voor deze acties heb je je pincode nodig.</div>
+            <div class="hint">${a.status === "open" ? "Accepteer of weiger voorstellen hierboven. " : ""}${a.status === "afgesproken" ? `Heeft ${ROOSTER} akkoord gegeven en de ruil verwerkt in het rooster? Markeer de dienst dan als afgehandeld. ` : ""}Voor deze acties heb je je pincode nodig.</div>
             <div class="actions">
               ${kanAfhandelen ? `<button type="button" class="btn btn-primary btn-sm" data-afhandelen>✓ Markeer als afgehandeld</button>` : ""}
               ${a.status === "afgesproken" ? `<button type="button" class="btn btn-ghost btn-sm" data-annuleer>Afspraak gaat niet door</button>` : ""}
@@ -772,8 +772,8 @@
       if (afh) afh.addEventListener("click", () => vraagPin({
         titel: "Markeer als afgehandeld",
         naam: a.naam,
-        uitleg: (a.status === "open" ? "Er is op de site nog geen voorstel geaccepteerd. " : "") + `Doe dit pas als ${ROOSTER} van het rooster akkoord heeft gegeven.`,
-        bevestiging: `${ROOSTER} van het rooster heeft akkoord gegeven dat deze ruil rooster-technisch kan.`,
+        uitleg: (a.status === "open" ? "Er is op de site nog geen voorstel geaccepteerd. " : "") + `Doe dit pas als ${ROOSTER} akkoord heeft gegeven en de ruil heeft verwerkt in het rooster.`,
+        bevestiging: `${ROOSTER} heeft akkoord gegeven en de ruil verwerkt in het rooster.`,
         knop: "Afhandelen",
         actie: (pin, ok) => rpc("dr_afhandelen", metGroep({ p_aanbod: a.id, p_pin: pin, p_bevestigd: !!ok })),
         klaar: () => naActie("Afgehandeld ✓"),
