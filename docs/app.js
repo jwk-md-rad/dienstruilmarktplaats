@@ -183,7 +183,7 @@
     const regels = [
       "Hoi " + rm + ",",
       "",
-      ruil ? "Wij willen graag de volgende diensten ruilen:" : "Wij willen graag de volgende dienst overdragen:",
+      ruil ? "Wij willen graag de volgende diensten ruilen:" : "Wij willen graag de volgende dienst ruilen:",
       "",
       "• " + dienstVol(a.datum, a.deel, a.locatie),
       "   van " + a.naam + " → naar " + r.naam,
