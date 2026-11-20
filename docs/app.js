@@ -103,6 +103,12 @@
 
   const DEEL = { dag: "Dagdienst", avond: "Avonddienst" };
   const STATUS = { open: "Open", afgesproken: "Afgesproken", afgehandeld: "Afgehandeld" };
+  const ROOSTER = esc(cfg.ROOSTERMAKER || "Danny"); // wie het rooster beheert
+  const STATUS_UITLEG = {
+    open: "Zoekt nog iemand om te ruilen of over te nemen.",
+    afgesproken: `De 2 radiologen zijn het eens over de ruil en mailen ${ROOSTER} van het rooster.`,
+    afgehandeld: `${ROOSTER} heeft akkoord gegeven: de ruil kan rooster-technisch.`,
+  };
 
   function dienstTags(datum, deel, locatie) {
     const info = dagInfo(datum);
@@ -465,8 +471,9 @@
       if (!meta.length) meta.push("Nog geen reacties");
     } else if (geacc) {
       meta.push(`Met ${esc(geacc.naam)}` + (geacc.soort === "ruilen" ? ` ⇄ ${esc(dienstTekst(geacc.ruil_datum, geacc.ruil_deel, geacc.ruil_locatie))}` : " (overname)"));
+      if (a.status === "afgesproken") meta.push(`wacht op akkoord ${ROOSTER}`);
     } else if (a.status === "afgehandeld") {
-      meta.push("Geregeld");
+      meta.push(`Akkoord van ${ROOSTER}`);
     }
     return `<button type="button" class="card s-${a.status}" data-open="${a.id}">
       <div class="datebox"><span class="wd">${esc(fmtWd.format(d).replace(".", ""))}</span><span class="d">${d.getDate()}</span><span class="m">${esc(fmtMonShort.format(d).replace(".", ""))}</span></div>
@@ -526,6 +533,9 @@
           </div>
           ${state.view === "lijst" ? `<label class="toggle"><input type="checkbox" data-verlopen ${state.verlopen ? "checked" : ""}> Toon verlopen</label>` : ""}
         </div>
+      </div>
+      <div class="status-uitleg">
+        ${["open", "afgesproken", "afgehandeld"].map((k) => `<div><span class="pill s-${k}">${STATUS[k]}</span><span>${STATUS_UITLEG[k]}</span></div>`).join("")}
       </div>
       ${inhoud}
       <div class="footer">
@@ -661,10 +671,10 @@
       if (a.status === "afgesproken" && geacc) {
         banner = `<div class="banner s-afgesproken"><strong>Afgesproken met ${esc(geacc.naam)}</strong>
           ${geacc.soort === "ruilen" ? `Ruil tegen ${esc(dienstTekst(geacc.ruil_datum, geacc.ruil_deel, geacc.ruil_locatie))}.` : "Neemt de dienst over (zonder terugdienst)."}
-          <br>Nog niet afgehandeld: ${esc(a.naam)} bevestigt zodra het geruild is én is doorgegeven aan het rooster.</div>`;
+          <br><br><strong>Volgende stap:</strong> mail samen ${ROOSTER} van het rooster. Zodra ${ROOSTER} akkoord geeft, zet ${esc(a.naam)} de dienst op <em>Afgehandeld</em>.</div>`;
       } else if (a.status === "afgehandeld") {
         banner = `<div class="banner s-afgehandeld"><strong>✓ Afgehandeld${a.afgehandeld_op ? " op " + esc(fmtStamp.format(new Date(a.afgehandeld_op))) : ""}</strong>
-          ${geacc ? `${geacc.soort === "ruilen" ? `Geruild met ${esc(geacc.naam)} tegen ${esc(dienstTekst(geacc.ruil_datum, geacc.ruil_deel, geacc.ruil_locatie))}` : `Overgenomen door ${esc(geacc.naam)}`}. ` : ""}Geruild en doorgegeven aan het rooster.</div>`;
+          ${geacc ? `${geacc.soort === "ruilen" ? `Geruild met ${esc(geacc.naam)} tegen ${esc(dienstTekst(geacc.ruil_datum, geacc.ruil_deel, geacc.ruil_locatie))}` : `Overgenomen door ${esc(geacc.naam)}`}. ` : ""}${ROOSTER} heeft akkoord gegeven: de ruil kan rooster-technisch.</div>`;
       }
 
       const voorstelHtml = voorstellen.map((r) => `
@@ -714,7 +724,7 @@
         <div class="section">
           <h3>Alleen voor ${esc(a.naam)}</h3>
           <div class="owner-box">
-            <div class="hint">${a.status === "open" ? "Accepteer of weiger voorstellen hierboven. " : ""}Voor deze acties heb je je pincode nodig.</div>
+            <div class="hint">${a.status === "open" ? "Accepteer of weiger voorstellen hierboven. " : ""}${a.status === "afgesproken" ? `Heeft ${ROOSTER} akkoord gegeven? Markeer de dienst dan als afgehandeld. ` : ""}Voor deze acties heb je je pincode nodig.</div>
             <div class="actions">
               ${kanAfhandelen ? `<button type="button" class="btn btn-primary btn-sm" data-afhandelen>✓ Markeer als afgehandeld</button>` : ""}
               ${a.status === "afgesproken" ? `<button type="button" class="btn btn-ghost btn-sm" data-annuleer>Afspraak gaat niet door</button>` : ""}
@@ -750,11 +760,11 @@
           titel: accept ? "Voorstel accepteren" : "Voorstel weigeren",
           naam: a.naam,
           uitleg: accept
-            ? `Je accepteert het voorstel van <strong>${esc(r.naam)}</strong>. Andere voorstellen vervallen. Spreek daarna samen de ruil af en geef hem door aan het rooster.`
+            ? `Je accepteert het voorstel van <strong>${esc(r.naam)}</strong>. Andere voorstellen vervallen en het aanbod staat op <strong>Afgesproken</strong>. Mail daarna samen ${ROOSTER} van het rooster.`
             : `Je weigert het voorstel van <strong>${esc(r.naam)}</strong>.`,
           knop: accept ? "Accepteren" : "Weigeren",
           actie: (pin) => rpc("dr_beslissen", metGroep({ p_reactie: rid, p_pin: pin, p_accepteren: accept })),
-          klaar: () => naActie(accept ? "Voorstel geaccepteerd" : "Voorstel geweigerd"),
+          klaar: () => naActie(accept ? `Afgesproken! Mail nu ${cfg.ROOSTERMAKER || "Danny"} van het rooster.` : "Voorstel geweigerd"),
         });
       }));
 
@@ -762,8 +772,8 @@
       if (afh) afh.addEventListener("click", () => vraagPin({
         titel: "Markeer als afgehandeld",
         naam: a.naam,
-        uitleg: a.status === "open" ? "Er is op de site nog geen voorstel geaccepteerd. Markeer alleen als afgehandeld als de ruil op een andere manier geregeld is." : "",
-        bevestiging: "De dienst is geruild én doorgegeven aan het rooster.",
+        uitleg: (a.status === "open" ? "Er is op de site nog geen voorstel geaccepteerd. " : "") + `Doe dit pas als ${ROOSTER} van het rooster akkoord heeft gegeven.`,
+        bevestiging: `${ROOSTER} van het rooster heeft akkoord gegeven dat deze ruil rooster-technisch kan.`,
         knop: "Afhandelen",
         actie: (pin, ok) => rpc("dr_afhandelen", metGroep({ p_aanbod: a.id, p_pin: pin, p_bevestigd: !!ok })),
         klaar: () => naActie("Afgehandeld ✓"),
