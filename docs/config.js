@@ -4,5 +4,6 @@
 // bron staan: zonder groepswachtwoord kun je er niets mee.
 window.DIENSTRUIL_CONFIG = {
   SUPABASE_URL: "https://covawerzfwalcvcrbxff.supabase.co",
-  SUPABASE_ANON_KEY: "sb_publishable_nY6etgIhy5xd5NelkE2Z2w_1JAyHOUe"
+  SUPABASE_ANON_KEY: "sb_publishable_nY6etgIhy5xd5NelkE2Z2w_1JAyHOUe",
+  ROOSTERMAKER: "Danny"   // wie het rooster beheert en akkoord geeft
 };

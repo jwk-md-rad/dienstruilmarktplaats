@@ -338,3 +338,11 @@ a.btn { display: inline-flex; align-items: center; justify-content: center; gap:
 @media (prefers-color-scheme: dark) {
   .wa-preview { background: #12301f; color: #d6f5e2; border-color: #1f4a31; }
 }
+
+/* ---------- Uitleg statussen op het bord ---------- */
+.status-uitleg {
+  display: grid; gap: 6px; background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 10px 12px; margin: -2px 0 14px; font-size: .84rem; color: var(--muted);
+}
+.status-uitleg > div { display: grid; grid-template-columns: 112px 1fr; gap: 8px; align-items: baseline; }
+.status-uitleg .pill { justify-self: start; }
