@@ -198,7 +198,7 @@
       "",
       "(Verstuurd via Dienstruil: " + aanbodLink(a.id) + ")"
     );
-    return "mailto:" + encodeURIComponent(cfg.ROOSTER_EMAIL || "") +
+    return "mailto:" + String(cfg.ROOSTER_EMAIL || "").trim() +
       "?subject=" + encodeURIComponent(onderwerp) + "&body=" + encodeURIComponent(regels.join("\r\n"));
   }
   const MAIL_ICOON = `<svg class="wa-ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3.5 6.5l8.5 6.5 8.5-6.5"/></svg>`;
