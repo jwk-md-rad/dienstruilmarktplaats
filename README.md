@@ -10,7 +10,8 @@ Eén overzichtelijke plek om AMC/VUmc-diensten te ruilen, in plaats van de Whats
   - 🟢 **Open**: zoekt nog iemand om te ruilen of over te nemen.
   - 🟡 **Afgesproken**: de 2 radiologen zijn het eens over de ruil en mailen Danny van het rooster.
   - ✅ **Afgehandeld** (grijs): Danny heeft akkoord gegeven en de ruil verwerkt in het rooster.
-- De naam van de roostermaker staat in `docs/config.js` (`ROOSTERMAKER`) en is daar aan te passen.
+- **Mail Danny:** bij een afgesproken dienst opent een knop je mailapp met een kant-en-klare mail aan de roostermaker (wie, welke datums, diensten en locaties).
+- Naam en e-mailadres van de roostermaker staan in `docs/config.js` (`ROOSTERMAKER`, `ROOSTER_EMAIL`). Is `ROOSTER_EMAIL` leeg, dan vul je het adres zelf in.
 - **Overzicht:** lijst of maandkalender, filters op status en locatie. Verlopen datums verdwijnen uit het overzicht (aan te zetten via "Toon verlopen").
 - **Toegang:** één groepswachtwoord. De beheerder heeft een beheercode die als pincode werkt op elk aanbod (voor kwijtgeraakte pincodes).
 

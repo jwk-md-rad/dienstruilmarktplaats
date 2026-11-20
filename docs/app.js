@@ -168,6 +168,40 @@
     return regels.join("\n");
   }
   function waUrl(a) { return "https://wa.me/?text=" + encodeURIComponent(deelTekst(a)); }
+
+  // ------------------------------------------------------------------
+  // Mail aan de roostermaker bij een afgesproken ruil
+  // ------------------------------------------------------------------
+  function dienstVol(datum, deel, locatie) {
+    const info = dagInfo(datum);
+    return longDate(datum) + ", " + (DEEL[deel] || deel).toLowerCase() + ", " + (locatie === "VU" ? "VUmc" : "AMC") + (info.feest ? " (" + info.feest + ")" : "");
+  }
+  function mailUrl(a, r) {
+    const rm = cfg.ROOSTERMAKER || "Danny";
+    const ruil = r.soort === "ruilen";
+    const onderwerp = (ruil ? "Dienstruil: " : "Dienst overnemen: ") + a.naam + (ruil ? " ⇄ " : " → ") + r.naam + " (" + medDate(a.datum) + ")";
+    const regels = [
+      "Hoi " + rm + ",",
+      "",
+      ruil ? "Wij willen graag de volgende diensten ruilen:" : "Wij willen graag de volgende dienst overdragen:",
+      "",
+      "• " + dienstVol(a.datum, a.deel, a.locatie),
+      "   van " + a.naam + " → naar " + r.naam,
+    ];
+    if (ruil) regels.push("", "• " + dienstVol(r.ruil_datum, r.ruil_deel, r.ruil_locatie), "   van " + r.naam + " → naar " + a.naam);
+    regels.push(
+      "",
+      "We zijn het hier allebei over eens. Kun je laten weten of dit rooster-technisch kan en de " + (ruil ? "ruil" : "overname") + " verwerken in het rooster?",
+      "",
+      "Alvast bedankt!",
+      a.naam + " en " + r.naam,
+      "",
+      "(Verstuurd via Dienstruil: " + aanbodLink(a.id) + ")"
+    );
+    return "mailto:" + String(cfg.ROOSTER_EMAIL || "").trim() +
+      "?subject=" + encodeURIComponent(onderwerp) + "&body=" + encodeURIComponent(regels.join("\r\n"));
+  }
+  const MAIL_ICOON = `<svg class="wa-ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3.5 6.5l8.5 6.5 8.5-6.5"/></svg>`;
   const WA_ICOON = `<svg class="wa-ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11.5a8.5 8.5 0 0 1-12.4 7.6L3.5 20.5l1.4-4A8.5 8.5 0 1 1 20 11.5z"/><path d="M9 8.6c.3 2.9 2.4 5.4 5.6 6.3l1-1.3-1.9-1-.8.8c-1-.5-1.8-1.3-2.3-2.3l.8-.8-1-1.9z"/></svg>`;
 
   function deelModal(a) {
@@ -671,7 +705,8 @@
       if (a.status === "afgesproken" && geacc) {
         banner = `<div class="banner s-afgesproken"><strong>Afgesproken met ${esc(geacc.naam)}</strong>
           ${geacc.soort === "ruilen" ? `Ruil tegen ${esc(dienstTekst(geacc.ruil_datum, geacc.ruil_deel, geacc.ruil_locatie))}.` : "Neemt de dienst over (zonder terugdienst)."}
-          <br><br><strong>Volgende stap:</strong> mail samen ${ROOSTER} van het rooster. Zodra ${ROOSTER} akkoord geeft en de ruil heeft verwerkt in het rooster, zet ${esc(a.naam)} de dienst op <em>Afgehandeld</em>.</div>`;
+          <br><br><strong>Volgende stap:</strong> mail ${ROOSTER} van het rooster. De mail staat al klaar, inclusief alle gegevens van de ruil. Zodra ${ROOSTER} akkoord geeft en de ruil heeft verwerkt in het rooster, zet ${esc(a.naam)} de dienst op <em>Afgehandeld</em>.
+          <a class="btn btn-primary btn-block" style="margin-top:12px" href="${esc(mailUrl(a, geacc))}" data-mail>${MAIL_ICOON} Mail ${ROOSTER}</a></div>`;
       } else if (a.status === "afgehandeld") {
         banner = `<div class="banner s-afgehandeld"><strong>✓ Afgehandeld${a.afgehandeld_op ? " op " + esc(fmtStamp.format(new Date(a.afgehandeld_op))) : ""}</strong>
           ${geacc ? `${geacc.soort === "ruilen" ? `Geruild met ${esc(geacc.naam)} tegen ${esc(dienstTekst(geacc.ruil_datum, geacc.ruil_deel, geacc.ruil_locatie))}` : `Overgenomen door ${esc(geacc.naam)}`}. ` : ""}${ROOSTER} heeft akkoord gegeven en de ruil verwerkt in het rooster.</div>`;
