@@ -5,11 +5,11 @@ Eén overzichtelijke plek om AMC/VUmc-diensten te ruilen, in plaats van de Whats
 - **Aanbieden:** datum aanklikken in de kalender → dag of avond kiezen (alleen in weekend/op feestdagen; doordeweeks is het altijd avond) → AMC of VUmc → naam + eigen pincode.
 - **Reageren:** met je naam: *overnemen* (zonder terugdienst), *ruilen* (met een eigen voorstel: datum, dag/avond, locatie) of *kan niet*.
 - **Accepteren/weigeren:** alleen de aanbieder, met de pincode. Bij accepteren vervallen de andere voorstellen.
-- **Afhandelen:** alleen de aanbieder, met pincode én het vinkje *"Danny van het rooster heeft akkoord gegeven dat deze ruil rooster-technisch kan"*.
+- **Afhandelen:** alleen de aanbieder, met pincode én het vinkje *"Danny heeft akkoord gegeven en de ruil verwerkt in het rooster"*.
 - **Statussen:**
   - 🟢 **Open**: zoekt nog iemand om te ruilen of over te nemen.
   - 🟡 **Afgesproken**: de 2 radiologen zijn het eens over de ruil en mailen Danny van het rooster.
-  - ✅ **Afgehandeld** (grijs): Danny heeft akkoord gegeven, de ruil kan rooster-technisch.
+  - ✅ **Afgehandeld** (grijs): Danny heeft akkoord gegeven en de ruil verwerkt in het rooster.
 - De naam van de roostermaker staat in `docs/config.js` (`ROOSTERMAKER`) en is daar aan te passen.
 - **Overzicht:** lijst of maandkalender, filters op status en locatie. Verlopen datums verdwijnen uit het overzicht (aan te zetten via "Toon verlopen").
 - **Toegang:** één groepswachtwoord. De beheerder heeft een beheercode die als pincode werkt op elk aanbod (voor kwijtgeraakte pincodes).
