@@ -183,7 +183,7 @@
     const regels = [
       "Hoi " + rm + ",",
       "",
-      ruil ? "Wij willen graag de volgende diensten ruilen:" : "Wij willen graag de volgende dienst overdragen:",
+      ruil ? "Wij willen graag de volgende diensten ruilen:" : "Wij willen graag de volgende dienst ruilen:",
       "",
       "• " + dienstVol(a.datum, a.deel, a.locatie),
       "   van " + a.naam + " → naar " + r.naam,
@@ -684,7 +684,7 @@
     zetHash(id);
     const m = openModal(`<div data-inhoud></div>`, { onClose: wisHash });
     const root = m.el.querySelector("[data-inhoud]");
-    const form = { soort: null, kiezer: null };
+    const form = { soort: null, kiezer: null, ruilWijze: null };
 
     async function naActie(melding) {
       toast(melding);
@@ -716,7 +716,9 @@
         <div class="resp r-${r.status}">
           <div class="resp-top"><span class="resp-name">${esc(r.naam)}</span><span class="resp-status">${RS[r.status]}</span></div>
           <div class="resp-what">${r.soort === "ruilen"
-            ? `Wil ruilen tegen <strong>${esc(dienstTekst(r.ruil_datum, r.ruil_deel, r.ruil_locatie))}</strong>${dagInfo(r.ruil_datum).feest ? ` (${esc(dagInfo(r.ruil_datum).feest)})` : ""}`
+            ? (r.ruil_datum
+              ? `Wil ruilen tegen <strong>${esc(dienstTekst(r.ruil_datum, r.ruil_deel, r.ruil_locatie))}</strong>${dagInfo(r.ruil_datum).feest ? ` (${esc(dagInfo(r.ruil_datum).feest)})` : ""}`
+              : `Wil ruilen: <strong>${esc(a.naam)} kiest</strong> zelf een dienst van ${esc(r.naam)} uit het rooster`)
             : `Neemt de dienst <strong>over</strong> zonder terugdienst`}</div>
           ${r.notitie ? `<div class="note" style="margin-top:4px">${esc(r.notitie)}</div>` : ""}
           <div class="hint">${esc(fmtStamp.format(new Date(r.aangemaakt)))}</div>
@@ -739,7 +741,7 @@
               <span class="label">Wat wil je doen?</span>
               <div class="choices">
                 <button type="button" class="choice" data-soort="overnemen" aria-pressed="${form.soort === "overnemen"}">Overnemen<small>zonder terugdienst</small></button>
-                <button type="button" class="choice" data-soort="ruilen" aria-pressed="${form.soort === "ruilen"}">Ruilen<small>tegen andere datum</small></button>
+                <button type="button" class="choice" data-soort="ruilen" aria-pressed="${form.soort === "ruilen"}">Ruilen<small>tegen een dienst van jou</small></button>
                 <button type="button" class="choice" data-soort="kan_niet" aria-pressed="${form.soort === "kan_niet"}">Kan niet<small>laat het weten</small></button>
               </div>
             </div>
@@ -786,11 +788,43 @@
       bind(a);
     }
 
+    // Ruil zonder datum: aanbieder kiest eerst welke dienst hij/zij overneemt.
+    function kiesTerugdienst(a, r) {
+      const k = openModal(sheetHead("Welke dienst neem je over?") + `
+        <p class="hint" style="margin-top:0">Kijk in het rooster welke dienst van <strong>${esc(r.naam)}</strong> je wilt overnemen. Die komt ook in de mail aan ${ROOSTER}.</p>
+        <div data-k></div>
+        <div data-err></div>
+        <div class="actions">
+          <button type="button" class="btn btn-ghost" data-close>Annuleren</button>
+          <button type="button" class="btn btn-primary" data-verder>Verder</button>
+        </div>`);
+      const kiezer = DienstKiezer(k.el.querySelector("[data-k]"), "Dienst van " + r.naam);
+      k.el.querySelector("[data-k]").addEventListener("click", () => { k.el.querySelector("[data-err]").innerHTML = ""; });
+      k.el.querySelector("[data-verder]").addEventListener("click", () => {
+        const f = kiezer.fout();
+        if (f) { k.el.querySelector("[data-err]").innerHTML = `<div class="error">${esc(f)}</div>`; return; }
+        const w = kiezer.waarde();
+        k.close();
+        vraagPin({
+          titel: "Voorstel accepteren",
+          naam: a.naam,
+          uitleg: `Je ruilt met <strong>${esc(r.naam)}</strong> en neemt over: <strong>${esc(dienstTekst(w.datum, w.deel, w.locatie))}</strong>. Andere voorstellen vervallen en het aanbod staat op <strong>Afgesproken</strong>. Mail daarna ${ROOSTER} van het rooster.`,
+          knop: "Accepteren",
+          actie: (pin) => rpc("dr_beslissen", metGroep({
+            p_reactie: r.id, p_pin: pin, p_accepteren: true,
+            p_ruil_datum: w.datum, p_ruil_deel: w.deel, p_ruil_locatie: w.locatie,
+          })),
+          klaar: () => naActie(`Afgesproken! Mail nu ${cfg.ROOSTERMAKER || "Danny"} van het rooster.`),
+        });
+      });
+    }
+
     function bind(a) {
       root.querySelectorAll("[data-accept],[data-weiger]").forEach((b) => b.addEventListener("click", () => {
         const accept = !!b.dataset.accept;
         const rid = b.dataset.accept || b.dataset.weiger;
         const r = a.reacties.find((x) => x.id === rid);
+        if (accept && r.soort === "ruilen" && !r.ruil_datum) return kiesTerugdienst(a, r);
         vraagPin({
           titel: accept ? "Voorstel accepteren" : "Voorstel weigeren",
           naam: a.naam,
@@ -837,7 +871,23 @@
       const rf = root.querySelector("[data-reageer]");
       if (!rf) return;
       const ruilBox = rf.querySelector("[data-ruil]");
-      if (form.soort === "ruilen") form.kiezer = DienstKiezer(ruilBox, "Welke dienst bied je terug?");
+      function tekenRuil() {
+        ruilBox.innerHTML = `
+          <div class="field">
+            <span class="label">Hoe wil je ruilen?</span>
+            <div class="choices">
+              <button type="button" class="choice" data-wijze="datum" aria-pressed="${form.ruilWijze === "datum"}">Ik stel een datum voor<small>een dienst van mij</small></button>
+              <button type="button" class="choice" data-wijze="kiezen" aria-pressed="${form.ruilWijze === "kiezen"}">${esc(a.naam)} kiest<small>uit mijn diensten in het rooster</small></button>
+            </div>
+          </div>
+          <div data-kiezerbox></div>`;
+        const box = ruilBox.querySelector("[data-kiezerbox]");
+        form.kiezer = null;
+        if (form.ruilWijze === "datum") form.kiezer = DienstKiezer(box, "Welke dienst bied je terug?");
+        else if (form.ruilWijze === "kiezen") box.innerHTML = `<p class="hint" style="margin:-4px 0 14px">${esc(a.naam)} kijkt in het rooster welke dienst van jou hij/zij wil overnemen, en kiest die bij het accepteren.</p>`;
+        ruilBox.querySelectorAll("[data-wijze]").forEach((b) => b.addEventListener("click", () => { form.ruilWijze = b.dataset.wijze; tekenRuil(); }));
+      }
+      if (form.soort === "ruilen") tekenRuil();
       rf.querySelectorAll("[data-soort]").forEach((b) => b.addEventListener("click", () => {
         const naam = rf.naam.value;
         form.soort = b.dataset.soort;
@@ -851,9 +901,9 @@
         const btn = rf.querySelector("[type=submit]");
         const naam = rf.naam.value.trim();
         let f = !naam ? "Vul je naam in." : !form.soort ? "Kies wat je wilt doen." : null;
-        if (!f && form.soort === "ruilen") f = form.kiezer.fout();
+        if (!f && form.soort === "ruilen") f = !form.ruilWijze ? "Kies hoe je wilt ruilen." : form.kiezer ? form.kiezer.fout() : null;
         if (f) { err.innerHTML = `<div class="error">${esc(f)}</div>`; return; }
-        const w = form.soort === "ruilen" ? form.kiezer.waarde() : {};
+        const w = form.soort === "ruilen" && form.kiezer ? form.kiezer.waarde() : {};
         knopBezig(btn, true, "Versturen…");
         try {
           await rpc("dr_reageren", metGroep({
@@ -863,7 +913,7 @@
           }));
           state.naam = naam; store.set("dr_naam", naam);
           const soort = form.soort;
-          form.soort = null; form.kiezer = null;
+          form.soort = null; form.kiezer = null; form.ruilWijze = null;
           await naActie(soort === "kan_niet" ? "Doorgegeven dat je niet kan" : "Voorstel verstuurd naar " + a.naam);
         } catch (ex) {
           knopBezig(btn, false);

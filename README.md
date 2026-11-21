@@ -3,7 +3,7 @@
 Eén overzichtelijke plek om AMC/VUmc-diensten te ruilen, in plaats van de WhatsApp-groep.
 
 - **Aanbieden:** datum aanklikken in de kalender → dag of avond kiezen (alleen in weekend/op feestdagen; doordeweeks is het altijd avond) → AMC of VUmc → naam + eigen pincode.
-- **Reageren:** met je naam: *overnemen* (zonder terugdienst), *ruilen* (met een eigen voorstel: datum, dag/avond, locatie) of *kan niet*.
+- **Reageren:** met je naam: *overnemen* (zonder terugdienst), *ruilen* of *kan niet*. Bij ruilen stel je zelf een dienst voor (datum, dag/avond, locatie), of je laat de aanbieder kiezen uit jouw diensten in het rooster. Die kiest de dienst dan bij het accepteren.
 - **Accepteren/weigeren:** alleen de aanbieder, met de pincode. Bij accepteren vervallen de andere voorstellen.
 - **Afhandelen:** alleen de aanbieder, met pincode én het vinkje *"Danny heeft akkoord gegeven en de ruil verwerkt in het rooster"*.
 - **Statussen:**

@@ -55,6 +55,15 @@ create table if not exists public.reacties (
   )
 );
 
+-- Ruilen mag ook zonder datum: dan kiest de aanbieder zelf een dienst van de
+-- ruiler (bij het accepteren). Werkt ook op een bestaande database.
+alter table public.reacties drop constraint if exists ruil_compleet;
+alter table public.reacties add constraint ruil_compleet check (
+  (ruil_datum is null) = (ruil_deel is null)
+  and (ruil_datum is null) = (ruil_locatie is null)
+  and (soort = 'ruilen' or ruil_datum is null)
+);
+
 create index if not exists aanbiedingen_datum_idx on public.aanbiedingen (datum);
 create index if not exists reacties_aanbod_idx on public.reacties (aanbod_id);
 
@@ -195,7 +204,8 @@ begin
     raise exception 'Vul je naam in.';
   end if;
   if p_soort = 'ruilen' then
-    if p_ruil_datum is null or p_ruil_deel is null or p_ruil_locatie is null then
+    -- Alles leeg = de aanbieder kiest zelf een dienst; anders alles verplicht.
+    if (p_ruil_datum is null) <> (p_ruil_deel is null) or (p_ruil_datum is null) <> (p_ruil_locatie is null) then
       raise exception 'Kies een datum, dag/avond en locatie voor je ruilvoorstel.';
     end if;
     if p_ruil_datum < _dr_vandaag() then
@@ -211,8 +221,12 @@ begin
   return nieuw;
 end $$;
 
+-- Oude versie (zonder terugdienst-parameters) weghalen, anders twee varianten.
+drop function if exists public.dr_beslissen(text, uuid, text, boolean);
+
 create or replace function public.dr_beslissen(
-  p_groep text, p_reactie uuid, p_pin text, p_accepteren boolean
+  p_groep text, p_reactie uuid, p_pin text, p_accepteren boolean,
+  p_ruil_datum date default null, p_ruil_deel text default null, p_ruil_locatie text default null
 ) returns void
 language plpgsql security definer set search_path = public, extensions, pg_temp as $$
 declare r reacties%rowtype; st text;
@@ -228,6 +242,17 @@ begin
     raise exception 'Over dit voorstel kan niet (meer) beslist worden.';
   end if;
   if p_accepteren then
+    -- Ruil zonder datum: de aanbieder kiest nu welke dienst hij/zij overneemt.
+    if r.soort = 'ruilen' and r.ruil_datum is null then
+      if p_ruil_datum is null or p_ruil_deel is null or p_ruil_locatie is null then
+        raise exception 'Kies welke dienst je van % overneemt (datum, dag/avond en locatie).', r.naam;
+      end if;
+      if p_ruil_datum < _dr_vandaag() then
+        raise exception 'Die datum ligt in het verleden.';
+      end if;
+      update reacties set ruil_datum = p_ruil_datum, ruil_deel = p_ruil_deel, ruil_locatie = p_ruil_locatie
+        where id = r.id;
+    end if;
     update reacties set status = 'geaccepteerd' where id = r.id;
     update reacties set status = 'vervallen'
       where aanbod_id = r.aanbod_id and id <> r.id
@@ -299,7 +324,7 @@ grant execute on function
   public.dr_overzicht(text),
   public.dr_aanbod_plaatsen(text, date, text, text, text, text, text),
   public.dr_reageren(text, uuid, text, text, date, text, text, text),
-  public.dr_beslissen(text, uuid, text, boolean),
+  public.dr_beslissen(text, uuid, text, boolean, date, text, text),
   public.dr_afspraak_annuleren(text, uuid, text),
   public.dr_afhandelen(text, uuid, text, boolean),
   public.dr_verwijderen(text, uuid, text)
