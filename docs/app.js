@@ -20,6 +20,7 @@
   const state = {
     groep: store.get("dr_groep"),
     naam: store.get("dr_naam") || "",
+    email: store.get("dr_email") || "",
     aanbod: [],
     geladen: false,
     view: store.get("dr_view") === "kalender" ? "kalender" : "lijst",
@@ -172,6 +173,15 @@
   // ------------------------------------------------------------------
   // Mail aan de roostermaker bij een afgesproken ruil
   // ------------------------------------------------------------------
+  const EMAIL_RE = /^[^\s@,;?&<>"]+@[^\s@,;?&<>"]+\.[^\s@,;?&<>"]+$/;
+  function emailVeld(id, verborgen) {
+    return `<div class="field" data-emailveld ${verborgen ? "hidden" : ""}>
+      <label for="${id}">Je e-mailadres</label>
+      <input id="${id}" class="input" name="email" type="email" inputmode="email" autocomplete="email" maxlength="120" value="${esc(state.email)}" placeholder="naam@amsterdamumc.nl">
+      <span class="hint">Komt in de cc van de mail aan ${esc(cfg.ROOSTERMAKER || "Danny")}. Alleen zichtbaar voor jullie twee nadat de ruil is afgesproken.</span>
+    </div>`;
+  }
+
   function dienstVol(datum, deel, locatie) {
     const info = dagInfo(datum);
     return longDate(datum) + ", " + (DEEL[deel] || deel).toLowerCase() + ", " + (locatie === "VU" ? "VUmc" : "AMC") + (info.feest ? " (" + info.feest + ")" : "");
@@ -198,8 +208,11 @@
       "",
       "(Verstuurd via Dienstruil: " + aanbodLink(a.id) + ")"
     );
+    // Beide betrokkenen in de cc (wie ook op de knop tikt, de ander staat erbij)
+    const cc = [a.email, r.email].filter((e) => e && EMAIL_RE.test(e));
     return "mailto:" + String(cfg.ROOSTER_EMAIL || "").trim() +
-      "?subject=" + encodeURIComponent(onderwerp) + "&body=" + encodeURIComponent(regels.join("\r\n"));
+      "?" + (cc.length ? "cc=" + cc.join(",") + "&" : "") +
+      "subject=" + encodeURIComponent(onderwerp) + "&body=" + encodeURIComponent(regels.join("\r\n"));
   }
   const MAIL_ICOON = `<svg class="wa-ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3.5 6.5l8.5 6.5 8.5-6.5"/></svg>`;
   const WA_ICOON = `<svg class="wa-ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11.5a8.5 8.5 0 0 1-12.4 7.6L3.5 20.5l1.4-4A8.5 8.5 0 1 1 20 11.5z"/><path d="M9 8.6c.3 2.9 2.4 5.4 5.6 6.3l1-1.3-1.9-1-.8.8c-1-.5-1.8-1.3-2.3-2.3l.8-.8-1-1.9z"/></svg>`;
@@ -634,6 +647,7 @@
           <label for="na-naam">Je naam</label>
           <input id="na-naam" class="input" name="naam" maxlength="60" autocomplete="name" value="${esc(state.naam)}" required>
         </div>
+        ${emailVeld("na-email")}
         <div class="field">
           <label for="na-pin">Kies een pincode (4–8 cijfers)</label>
           <input id="na-pin" class="input" name="pin" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="8" autocomplete="new-password" required>
@@ -655,15 +669,17 @@
       const w = kiezer.waarde();
       const naam = form.naam.value.trim();
       const pin = form.pin.value.trim();
-      const f = kiezer.fout() || (!naam ? "Vul je naam in." : !/^[0-9]{4,8}$/.test(pin) ? "Pincode moet 4 tot 8 cijfers zijn." : null);
+      const email = form.email.value.trim();
+      const f = kiezer.fout() || (!naam ? "Vul je naam in." : !EMAIL_RE.test(email) ? "Vul een geldig e-mailadres in." : !/^[0-9]{4,8}$/.test(pin) ? "Pincode moet 4 tot 8 cijfers zijn." : null);
       if (f) { err.innerHTML = `<div class="error">${esc(f)}</div>`; return; }
       knopBezig(btn, true, "Plaatsen…");
       try {
         const nieuwId = await rpc("dr_aanbod_plaatsen", metGroep({
           p_datum: w.datum, p_deel: w.deel, p_locatie: w.locatie,
-          p_naam: naam, p_pin: pin, p_notitie: form.notitie.value.trim() || null,
+          p_naam: naam, p_pin: pin, p_notitie: form.notitie.value.trim() || null, p_email: email,
         }));
         state.naam = naam; store.set("dr_naam", naam);
+        state.email = email; store.set("dr_email", email);
         m.close();
         state.status = "alle";
         await laden(true);
@@ -705,7 +721,7 @@
       if (a.status === "afgesproken" && geacc) {
         banner = `<div class="banner s-afgesproken"><strong>Afgesproken met ${esc(geacc.naam)}</strong>
           ${geacc.soort === "ruilen" ? `Ruil tegen ${esc(dienstTekst(geacc.ruil_datum, geacc.ruil_deel, geacc.ruil_locatie))}.` : "Neemt de dienst over (zonder terugdienst)."}
-          <br><br><strong>Volgende stap:</strong> mail ${ROOSTER} van het rooster. De mail staat al klaar, inclusief alle gegevens van de ruil. Zodra ${ROOSTER} akkoord geeft en de ruil heeft verwerkt in het rooster, zet ${esc(a.naam)} de dienst op <em>Afgehandeld</em>.
+          <br><br><strong>Volgende stap:</strong> mail ${ROOSTER} van het rooster. De mail staat al klaar, met alle gegevens van de ruil en jullie allebei in de cc. Zodra ${ROOSTER} akkoord geeft en de ruil heeft verwerkt in het rooster, zet ${esc(a.naam)} de dienst op <em>Afgehandeld</em>.
           <a class="btn btn-primary btn-block" style="margin-top:12px" href="${esc(mailUrl(a, geacc))}" data-mail>${MAIL_ICOON} Mail ${ROOSTER}</a></div>`;
       } else if (a.status === "afgehandeld") {
         banner = `<div class="banner s-afgehandeld"><strong>✓ Afgehandeld${a.afgehandeld_op ? " op " + esc(fmtStamp.format(new Date(a.afgehandeld_op))) : ""}</strong>
@@ -745,6 +761,7 @@
                 <button type="button" class="choice" data-soort="kan_niet" aria-pressed="${form.soort === "kan_niet"}">Kan niet<small>laat het weten</small></button>
               </div>
             </div>
+            ${emailVeld("r-email", !form.soort || form.soort === "kan_niet")}
             <div data-ruil ${form.soort === "ruilen" ? "" : "hidden"}></div>
             <div class="field" ${form.soort && form.soort !== "kan_niet" ? "" : "hidden"}>
               <label for="r-notitie">Bericht <span class="hint">(optioneel)</span></label>
@@ -889,18 +906,20 @@
       }
       if (form.soort === "ruilen") tekenRuil();
       rf.querySelectorAll("[data-soort]").forEach((b) => b.addEventListener("click", () => {
-        const naam = rf.naam.value;
+        const naam = rf.naam.value, email = rf.email.value;
         form.soort = b.dataset.soort;
         teken();
         const nf = root.querySelector("[data-reageer]");
-        if (nf) nf.naam.value = naam;
+        if (nf) { nf.naam.value = naam; nf.email.value = email; }
       }));
       rf.addEventListener("submit", async (e) => {
         e.preventDefault();
         const err = rf.querySelector("[data-err]");
         const btn = rf.querySelector("[type=submit]");
         const naam = rf.naam.value.trim();
-        let f = !naam ? "Vul je naam in." : !form.soort ? "Kies wat je wilt doen." : null;
+        const email = rf.email.value.trim();
+        const metEmail = form.soort && form.soort !== "kan_niet";
+        let f = !naam ? "Vul je naam in." : !form.soort ? "Kies wat je wilt doen." : metEmail && !EMAIL_RE.test(email) ? "Vul een geldig e-mailadres in." : null;
         if (!f && form.soort === "ruilen") f = !form.ruilWijze ? "Kies hoe je wilt ruilen." : form.kiezer ? form.kiezer.fout() : null;
         if (f) { err.innerHTML = `<div class="error">${esc(f)}</div>`; return; }
         const w = form.soort === "ruilen" && form.kiezer ? form.kiezer.waarde() : {};
@@ -910,8 +929,10 @@
             p_aanbod: a.id, p_soort: form.soort, p_naam: naam,
             p_ruil_datum: w.datum || null, p_ruil_deel: w.deel || null, p_ruil_locatie: w.locatie || null,
             p_notitie: (rf.notitie && rf.notitie.value.trim()) || null,
+            p_email: metEmail ? email : null,
           }));
           state.naam = naam; store.set("dr_naam", naam);
+          if (metEmail) { state.email = email; store.set("dr_email", email); }
           const soort = form.soort;
           form.soort = null; form.kiezer = null; form.ruilWijze = null;
           await naActie(soort === "kan_niet" ? "Doorgegeven dat je niet kan" : "Voorstel verstuurd naar " + a.naam);
