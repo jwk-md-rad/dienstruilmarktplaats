@@ -64,6 +64,17 @@ alter table public.reacties add constraint ruil_compleet check (
   and (soort = 'ruilen' or ruil_datum is null)
 );
 
+-- E-mailadressen (voor de cc van de mail aan de roostermaker).
+-- Alleen zichtbaar voor de twee betrokkenen nadat een voorstel is geaccepteerd.
+alter table public.aanbiedingen add column if not exists email text;
+alter table public.reacties     add column if not exists email text;
+alter table public.aanbiedingen drop constraint if exists email_geldig;
+alter table public.aanbiedingen add constraint email_geldig
+  check (email is null or email ~ '^[^\s@,;?&<>"]+@[^\s@,;?&<>"]+\.[^\s@,;?&<>"]+$');
+alter table public.reacties drop constraint if exists email_geldig;
+alter table public.reacties add constraint email_geldig
+  check (email is null or email ~ '^[^\s@,;?&<>"]+@[^\s@,;?&<>"]+\.[^\s@,;?&<>"]+$');
+
 create index if not exists aanbiedingen_datum_idx on public.aanbiedingen (datum);
 create index if not exists reacties_aanbod_idx on public.reacties (aanbod_id);
 
@@ -145,12 +156,14 @@ begin
   from (
     select o.id, o.datum, o.deel, o.locatie, o.naam, o.notitie, o.status,
            o.aangemaakt, o.afgehandeld_op,
+           case when o.status in ('afgesproken', 'afgehandeld') then o.email end as email,
            coalesce((
              select json_agg(json_build_object(
                       'id', r.id, 'soort', r.soort, 'naam', r.naam,
                       'ruil_datum', r.ruil_datum, 'ruil_deel', r.ruil_deel,
                       'ruil_locatie', r.ruil_locatie, 'notitie', r.notitie,
-                      'status', r.status, 'aangemaakt', r.aangemaakt)
+                      'status', r.status, 'aangemaakt', r.aangemaakt,
+                      'email', case when r.status = 'geaccepteerd' then r.email end)
                     order by r.aangemaakt)
              from reacties r where r.aanbod_id = o.id
            ), '[]'::json) as reacties
@@ -160,9 +173,11 @@ begin
   return resultaat;
 end $$;
 
+drop function if exists public.dr_aanbod_plaatsen(text, date, text, text, text, text, text);
+
 create or replace function public.dr_aanbod_plaatsen(
   p_groep text, p_datum date, p_deel text, p_locatie text,
-  p_naam text, p_pin text, p_notitie text default null
+  p_naam text, p_pin text, p_notitie text default null, p_email text default null
 ) returns uuid
 language plpgsql security definer set search_path = public, extensions, pg_temp as $$
 declare nieuw uuid;
@@ -177,17 +192,22 @@ begin
   if coalesce(btrim(p_naam), '') = '' then
     raise exception 'Vul je naam in.';
   end if;
-  insert into aanbiedingen (datum, deel, locatie, naam, pin_hash, notitie)
+  if nullif(btrim(p_email), '') is not null and btrim(p_email) !~ '^[^\s@,;?&<>"]+@[^\s@,;?&<>"]+\.[^\s@,;?&<>"]+$' then
+    raise exception 'Vul een geldig e-mailadres in.';
+  end if;
+  insert into aanbiedingen (datum, deel, locatie, naam, pin_hash, notitie, email)
   values (p_datum, p_deel, p_locatie, btrim(p_naam), crypt(p_pin, gen_salt('bf')),
-          nullif(btrim(p_notitie), ''))
+          nullif(btrim(p_notitie), ''), nullif(lower(btrim(p_email)), ''))
   returning id into nieuw;
   return nieuw;
 end $$;
 
+drop function if exists public.dr_reageren(text, uuid, text, text, date, text, text, text);
+
 create or replace function public.dr_reageren(
   p_groep text, p_aanbod uuid, p_soort text, p_naam text,
   p_ruil_datum date default null, p_ruil_deel text default null,
-  p_ruil_locatie text default null, p_notitie text default null
+  p_ruil_locatie text default null, p_notitie text default null, p_email text default null
 ) returns uuid
 language plpgsql security definer set search_path = public, extensions, pg_temp as $$
 declare st text; nieuw uuid;
@@ -214,9 +234,13 @@ begin
   else
     p_ruil_datum := null; p_ruil_deel := null; p_ruil_locatie := null;
   end if;
-  insert into reacties (aanbod_id, soort, naam, ruil_datum, ruil_deel, ruil_locatie, notitie)
+  if p_soort <> 'kan_niet' and nullif(btrim(p_email), '') is not null and btrim(p_email) !~ '^[^\s@,;?&<>"]+@[^\s@,;?&<>"]+\.[^\s@,;?&<>"]+$' then
+    raise exception 'Vul een geldig e-mailadres in.';
+  end if;
+  insert into reacties (aanbod_id, soort, naam, ruil_datum, ruil_deel, ruil_locatie, notitie, email)
   values (p_aanbod, p_soort, btrim(p_naam), p_ruil_datum, p_ruil_deel, p_ruil_locatie,
-          nullif(btrim(p_notitie), ''))
+          nullif(btrim(p_notitie), ''),
+          case when p_soort = 'kan_niet' then null else nullif(lower(btrim(p_email)), '') end)
   returning id into nieuw;
   return nieuw;
 end $$;
@@ -322,8 +346,8 @@ grant usage on schema public to anon, authenticated;
 grant execute on function
   public.dr_inloggen(text),
   public.dr_overzicht(text),
-  public.dr_aanbod_plaatsen(text, date, text, text, text, text, text),
-  public.dr_reageren(text, uuid, text, text, date, text, text, text),
+  public.dr_aanbod_plaatsen(text, date, text, text, text, text, text, text),
+  public.dr_reageren(text, uuid, text, text, date, text, text, text, text),
   public.dr_beslissen(text, uuid, text, boolean, date, text, text),
   public.dr_afspraak_annuleren(text, uuid, text),
   public.dr_afhandelen(text, uuid, text, boolean),
